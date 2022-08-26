@@ -4,10 +4,12 @@ import (
 	"encoding/json"
 	"fmt"
 	"log"
-	"math/rand"
+
+	// "math/rand"
 	"net/http"
 	"os"
 	"strconv"
+	"time"
 	dto "waysbucks/dto/result"
 	transactiondto "waysbucks/dto/transaction"
 	"waysbucks/models"
@@ -74,10 +76,12 @@ func (h *handlerTransaction) CreateTransaction(w http.ResponseWriter, r *http.Re
 		return
 	}
 
+	timeMilli := time.Now()
+	uniqueNumb := timeMilli.Unix()
 	var TransIdIsMatch = false
 	var TransactionId int
 	for !TransIdIsMatch {
-		TransactionId = userId + rand.Intn(10000) - rand.Intn(100)
+		TransactionId = userId
 		transactionData, _ := h.TransactionRepository.GetTransaction(TransactionId)
 		if transactionData.ID == 0 {
 			TransIdIsMatch = true
@@ -88,7 +92,7 @@ func (h *handlerTransaction) CreateTransaction(w http.ResponseWriter, r *http.Re
 		UserID: userId,
 		Status: "waiting approve",
 		Total:  request.Total,
-		ID:     TransactionId,
+		ID:     int(uniqueNumb),
 	}
 
 	dataTransactions, err := h.TransactionRepository.CreateTransaction(transaction)
@@ -100,6 +104,48 @@ func (h *handlerTransaction) CreateTransaction(w http.ResponseWriter, r *http.Re
 	}
 
 	dataTransactionUser, err := h.TransactionRepository.GetTransaction(dataTransactions.ID)
+	if err != nil {
+		w.WriteHeader(http.StatusInternalServerError)
+		json.NewEncoder(w).Encode(err.Error())
+		return
+	}
+
+	// 1. Initiate Snap client
+	var s = snap.Client{}
+	s.New(os.Getenv("SERVER_KEY"), midtrans.Sandbox)
+	// Use to midtrans.Production if you want Production Environment (accept real transaction).
+
+	// 2. Initiate Snap request param
+	// req := &snap.Request{
+	// 	TransactionDetails: midtrans.TransactionDetails{
+	// 		OrderID:  strconv.Itoa(dataTransactionUser.ID),
+	// 		GrossAmt: int64(dataTransactionUser.Total),
+	// 	},
+	// 	CreditCard: &snap.CreditCardDetails{
+	// 		Secure: true,
+	// 	},
+	// 	CustomerDetail: &midtrans.CustomerDetails{
+	// 		FName: dataTransactionUser.User.Fullname,
+	// 		Email: dataTransactionUser.User.Email,
+	// 	},
+	// }
+
+	// 3. Execute request create Snap transaction to Midtrans Snap API
+	// snapResp, _ := s.CreateTransaction(req)
+
+	w.WriteHeader(http.StatusOK)
+	response := dto.SuccessResult{Status: "Success", Data: dataTransactionUser}
+
+	json.NewEncoder(w).Encode(response)
+
+}
+
+func (h *handlerTransaction) GetSnap(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Content-Type", "application/json")
+
+	id, _ := strconv.Atoi(mux.Vars(r)["id"])
+
+	dataTransactionUser, err := h.TransactionRepository.GetTransaction(id)
 	if err != nil {
 		w.WriteHeader(http.StatusInternalServerError)
 		json.NewEncoder(w).Encode(err.Error())
@@ -132,7 +178,6 @@ func (h *handlerTransaction) CreateTransaction(w http.ResponseWriter, r *http.Re
 	w.WriteHeader(http.StatusOK)
 	response := dto.SuccessResult{Status: "Success", Data: snapResp}
 	json.NewEncoder(w).Encode(response)
-
 }
 
 func (h *handlerTransaction) UpdateTransaction(w http.ResponseWriter, r *http.Request) {

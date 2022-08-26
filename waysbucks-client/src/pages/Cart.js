@@ -51,11 +51,6 @@ export default function Cart() {
     getCart();
   }, []);
 
-
-  
-
-  
-
   const cartdata = carts?.filter((item) => {
     return item.transaction_id === null
   })
@@ -69,7 +64,6 @@ export default function Cart() {
     Total: resultTotal,
   };
   
-
   const handleSubmit = useMutation(async (e) => {
     try {
       const config = {
@@ -82,14 +76,16 @@ export default function Cart() {
         Total : resultTotal
       })
 
-    const response = await API.post("/transaction", body, config);
-    const idTrans = response.data.data.id
+    const respons = await API.post("/transaction", body, config);
+    const idTrans = respons.data.data.id
+    console.log(idTrans);
     
     for (let i = 0; i < cartdata.length; i++) {
         await API.patch(`/cart/${cartdata[i].id}`, { "transaction_id": idTrans }, config)
       }
 
-      const token = response.data.data.token;
+      const snap = await API.get(`/snap/${idTrans}`)
+      const token = snap.data.data.token;
 
     window.snap.pay(token, {
       onSuccess: function (result) {

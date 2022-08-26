@@ -111,6 +111,7 @@ function RegisterAuth() {
             name="password"
             id="password"
             placeholder="password"
+            onChange={handleChange}
             style={{ borderColor: "red" }}
             autoFocus
           />
