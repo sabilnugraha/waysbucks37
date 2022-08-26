@@ -16,12 +16,17 @@ import ModalCart from "../components/Trans";
 export default function Cart() {
   const [state, dispatch] = useContext(Usercontext);
   const [carts, setCarts] = useState([])
+  const [idCarts, setIdCarts] = useState([])
   // modal
   const [showTrans, setShowTrans] = useState(false);
   // const handleShow = () => setShowTrans(true);
   const handleClose = () => setShowTrans(false);
   let navigate = useNavigate();
+  const UUID = require('uuid-int');
 
+  let today = new Date()
+
+  
   // cart
   // let { data: cart, refetch } = useQuery("cartsCache", async () => {
   //   const response = await API.get("/carts-id");
@@ -31,41 +36,60 @@ export default function Cart() {
     try {
       const response = await API.get("/carts-id");
       setCarts(response.data.data);
+      setIdCarts(response.data.data)
     } catch (error) {
       console.log(error);
     }
   };
 
-  console.log(carts);
+  const cartid = carts?.map((item) => {
+    return item.id
+  })
 
+  console.log(cartid);
   useEffect(() => {
     getCart();
   }, []);
 
 
-  let resultTotal = carts?.reduce((a, b) => {
+  
+
+  
+
+  const cartdata = carts?.filter((item) => {
+    return item.transaction_id === null
+  })
+
+  let resultTotal = cartdata?.reduce((a, b) => {
     return a + b.subtotal;
   }, 0);
   console.log(resultTotal)
 
   const form = {
-    status: "pending",
-    total: resultTotal,
+    Total: resultTotal,
   };
+  
 
   const handleSubmit = useMutation(async (e) => {
-    const config = {
+    try {
+      const config = {
       headers: {
         "Content-type": "application/json",
       },
     };
     // Insert transaction data
-    const body = JSON.stringify(form);
+    const body = JSON.stringify({
+        Total : resultTotal
+      })
 
-    const response = await API.patch("/transaction", body, config);
-    console.log(response.data.data.token);
+    const response = await API.post("/transaction", body, config);
+    const idTrans = response.data.data.id
+    
+    for (let i = 0; i < cartdata.length; i++) {
+        await API.patch(`/cart/${cartdata[i].id}`, { "transaction_id": idTrans }, config)
+      }
 
-    const token = response.data.data.token;
+      const token = response.data.data.token;
 
     window.snap.pay(token, {
       onSuccess: function (result) {
@@ -87,7 +111,22 @@ export default function Cart() {
         alert("you closed the popup without finishing the payment");
       },
     });
+    
+    } catch (error) {
+      console.log(error);
+    }
+    // const idTrans = response.data.data.id
+    // const transId = JSON.stringify(idTrans)
+    // console.log(idTrans);
+    // await API.patch(`/cart/${cartid}`, {"transaction_id" : 20}, config)
+    // await API.patch(`/cart/${cartid}`, {"transaction_id" : idTrans}, config)
+    
+
+    
+
+    
   });
+  
   
 
   useEffect(() => {
@@ -120,7 +159,7 @@ export default function Cart() {
               <Col md={8}>
                 <hr />
 
-                {carts.map((item, index) => {
+                {cartdata.map((item, index) => {
                   return (
                     <div className="mb-2">
                       <Row>
@@ -136,6 +175,7 @@ export default function Cart() {
                             <p>
                               <strong style={{ color: "#BD0707" }}>
                                 {item?.product?.title}
+                                
                               </strong>
                             </p>
                             <p>{convertRupiah.convert(item?.product?.price)}</p>
@@ -165,7 +205,7 @@ export default function Cart() {
               </Col>
               <Col md={4}>
                 <hr />
-                {carts.map((item, index) => {
+                {cartdata.map((item, index) => {
                   return(
                     <>
                 <Col className="d-flex justify-content-between">

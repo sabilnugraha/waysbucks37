@@ -3,17 +3,18 @@ package models
 import "time"
 
 type Cart struct {
-	ID            int `json:"id" gorm:"PRIMARY_KEY"`
-	Product_ID    int `json:"product_id"`
-	TransactionID int `json:"transaction_id"`
+	ID            int  `json:"id" gorm:"PRIMARY_KEY"`
+	Product_ID    int  `json:"product_id"`
+	TransactionID *int `json:"transaction_id"`
 	Transaction   Transaction
 	Product       Product   `json:"product"`
 	ToppingID     []int     `json:"topping_id" gorm:"-"`
 	Topping       []Topping `gorm:"many2many:cart_toppings;constraint:OnUpdate:CASCADE,OnDelete:CASCADE;"`
-
-	SubTotal  int       `json:"subtotal"`
-	CreatedAt time.Time `json:"-"`
-	UpdatedAt time.Time `json:"-"`
+	UserID        int       `json:"user_id"`
+	SubTotal      int       `json:"subtotal"`
+	CreatedAt     time.Time `json:"-"`
+	UpdatedAt     time.Time `json:"-"`
+	Status        string    `json:"status"`
 }
 
 type CartResponse struct {

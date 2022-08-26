@@ -4,8 +4,8 @@ import (
 	"encoding/json"
 	"fmt"
 	"log"
+	"math/rand"
 	"net/http"
-
 	"os"
 	"strconv"
 	dto "waysbucks/dto/result"
@@ -54,11 +54,15 @@ func (h *handlerTransaction) GetTransaction(w http.ResponseWriter, r *http.Reque
 func (h *handlerTransaction) CreateTransaction(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 
+	userInfo := r.Context().Value("userInfo").(jwt.MapClaims)
+	userId := int(userInfo["id"].(float64))
+
 	request := new(transactiondto.CreateTransaction)
 	if err := json.NewDecoder(r.Body).Decode(&request); err != nil {
 		w.WriteHeader(http.StatusBadRequest)
 		response := dto.ErrorResult{Code: http.StatusBadRequest, Message: err.Error()}
 		json.NewEncoder(w).Encode(response)
+		return
 	}
 
 	validate := validator.New()
@@ -67,22 +71,68 @@ func (h *handlerTransaction) CreateTransaction(w http.ResponseWriter, r *http.Re
 		w.WriteHeader(http.StatusBadRequest)
 		response := dto.ErrorResult{Code: http.StatusBadRequest, Message: err.Error()}
 		json.NewEncoder(w).Encode(response)
+		return
+	}
+
+	var TransIdIsMatch = false
+	var TransactionId int
+	for !TransIdIsMatch {
+		TransactionId = userId + rand.Intn(10000) - rand.Intn(100)
+		transactionData, _ := h.TransactionRepository.GetTransaction(TransactionId)
+		if transactionData.ID == 0 {
+			TransIdIsMatch = true
+		}
 	}
 
 	transaction := models.Transaction{
-		UserID: request.UserID,
+		UserID: userId,
+		Status: "waiting approve",
+		Total:  request.Total,
+		ID:     TransactionId,
 	}
 
-	data, err := h.TransactionRepository.CreateTransaction(transaction)
+	dataTransactions, err := h.TransactionRepository.CreateTransaction(transaction)
 	if err != nil {
 		w.WriteHeader(http.StatusInternalServerError)
 		response := dto.ErrorResult{Code: http.StatusInternalServerError, Message: err.Error()}
 		json.NewEncoder(w).Encode(response)
+		return
 	}
 
+	dataTransactionUser, err := h.TransactionRepository.GetTransaction(dataTransactions.ID)
+	if err != nil {
+		w.WriteHeader(http.StatusInternalServerError)
+		json.NewEncoder(w).Encode(err.Error())
+		return
+	}
+
+	// 1. Initiate Snap client
+	var s = snap.Client{}
+	s.New(os.Getenv("SERVER_KEY"), midtrans.Sandbox)
+	// Use to midtrans.Production if you want Production Environment (accept real transaction).
+
+	// 2. Initiate Snap request param
+	req := &snap.Request{
+		TransactionDetails: midtrans.TransactionDetails{
+			OrderID:  strconv.Itoa(dataTransactionUser.ID),
+			GrossAmt: int64(dataTransactionUser.Total),
+		},
+		CreditCard: &snap.CreditCardDetails{
+			Secure: true,
+		},
+		CustomerDetail: &midtrans.CustomerDetails{
+			FName: dataTransactionUser.User.Fullname,
+			Email: dataTransactionUser.User.Email,
+		},
+	}
+
+	// 3. Execute request create Snap transaction to Midtrans Snap API
+	snapResp, _ := s.CreateTransaction(req)
+
 	w.WriteHeader(http.StatusOK)
-	response := dto.SuccessResult{Status: "Success", Data: data}
+	response := dto.SuccessResult{Status: "Success", Data: snapResp}
 	json.NewEncoder(w).Encode(response)
+
 }
 
 func (h *handlerTransaction) UpdateTransaction(w http.ResponseWriter, r *http.Request) {
@@ -261,5 +311,14 @@ func SendMail(status string, transaction models.Transaction) {
 		}
 
 		log.Println("Mail sent! to " + transaction.User.Email)
+	}
+}
+
+func convertTransactionResponse(u models.Transaction) transactiondto.TransactionResponse {
+	return transactiondto.TransactionResponse{
+		ID:     u.ID,
+		Total:  u.Total,
+		Status: u.Status,
+		UserID: u.UserID,
 	}
 }

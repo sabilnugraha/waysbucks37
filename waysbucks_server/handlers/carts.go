@@ -130,7 +130,7 @@ func (h *handlersCart) CreateCart(w http.ResponseWriter, r *http.Request) {
 
 	// get data user token
 	userInfo := r.Context().Value("userInfo").(jwt.MapClaims)
-	Transaction_ID := int(userInfo["time"].(float64))
+	userId := int(userInfo["id"].(float64))
 
 	request := new(cartdto.CreateCart)
 	if err := json.NewDecoder(r.Body).Decode(&request); err != nil {
@@ -149,18 +149,10 @@ func (h *handlersCart) CreateCart(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// var toppingsId []int
-	// for _, r := range r.FormValue("topping_Id") {
-	// 	if int(r-'0') >= 0 {
-	// 		toppingsId = append(toppingsId, int(r-'0'))
-	// 	}
-	// }
-
 	requestForm := models.Cart{
-		Product_ID:    request.Product_ID,
-		TransactionID: Transaction_ID,
-		SubTotal:      request.SubTotal,
-		ToppingID:     request.Topping_ID,
+		Product_ID: request.Product_ID,
+		SubTotal:   request.SubTotal,
+		ToppingID:  request.Topping_ID,
 	}
 
 	validatee := validator.New()
@@ -175,10 +167,11 @@ func (h *handlersCart) CreateCart(w http.ResponseWriter, r *http.Request) {
 	topping, _ := h.CartRepository.FindToppingsID(request.Topping_ID)
 
 	cart := models.Cart{
-		Product_ID:    request.Product_ID,
-		SubTotal:      request.SubTotal,
-		Topping:       topping,
-		TransactionID: Transaction_ID,
+		UserID:     userId,
+		Product_ID: request.Product_ID,
+		SubTotal:   request.SubTotal,
+		Topping:    topping,
+		Status:     "onlist",
 	}
 	fmt.Println(cart)
 
@@ -194,96 +187,25 @@ func (h *handlersCart) CreateCart(w http.ResponseWriter, r *http.Request) {
 	json.NewEncoder(w).Encode(response)
 }
 
-// func (h *handlersCart) UpdateCart(w http.ResponseWriter, r *http.Request) {
-// 	w.Header().Set("Content-Type", "application/json")
+func (h *handlersCart) FindCartId(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Content-Type", "application/json")
 
-// 	request := new(cartdto.UpdateCart)
-// 	if err := json.NewDecoder(r.Body).Decode(&request); err != nil {
-// 		w.WriteHeader(http.StatusBadRequest)
-// 		response := dto.ErrorResult{Code: http.StatusBadRequest, Message: err.Error()}
-// 		json.NewEncoder(w).Encode(response)
-// 		return
-// 	}
+	userInfo := r.Context().Value("userInfo").(jwt.MapClaims)
+	UserID := int(userInfo["id"].(float64))
 
-// 	id, _ := strconv.Atoi(mux.Vars(r)["id"])
-// 	cart, err := h.CartRepository.GetCart(int(id))
-// 	if err != nil {
-// 		w.WriteHeader(http.StatusBadRequest)
-// 		response := dto.ErrorResult{Code: http.StatusBadRequest, Message: err.Error()}
-// 		json.NewEncoder(w).Encode(response)
-// 	}
+	cart, err := h.CartRepository.FindCartId(UserID)
+	if err != nil {
+		w.WriteHeader(http.StatusInternalServerError)
+		response := dto.ErrorResult{Code: http.StatusBadRequest, Message: err.Error()}
+		json.NewEncoder(w).Encode(response)
+		return
+	}
 
-// 	// len > 0
-// 	if request.ProductID != 0 {
-// 		cart.Product_ID = request.ProductID
-// 	}
+	w.WriteHeader(http.StatusOK)
+	response := dto.SuccessResult{Status: "Success", Data: cart}
+	json.NewEncoder(w).Encode(response)
 
-// 	data, err := h.CartRepository.UpdateCart(cart)
-// 	if err != nil {
-// 		w.WriteHeader(http.StatusInternalServerError)
-// 		response := dto.ErrorResult{Code: http.StatusInternalServerError, Message: err.Error()}
-// 		json.NewEncoder(w).Encode(response)
-// 	}
-
-// 	w.WriteHeader(http.StatusOK)
-// 	response := dto.SuccessResult{Status: "Success", Data: data}
-// 	json.NewEncoder(w).Encode(response)
-// }
-
-// func (h *handlersCart) DeleteCart(w http.ResponseWriter, r *http.Request) {
-// 	w.Header().Set("Content-Type", "application/json")
-
-// 	id, _ := strconv.Atoi(mux.Vars(r)["id"])
-// 	cart, err := h.CartRepository.GetCart(id)
-// 	if err != nil {
-// 		w.WriteHeader(http.StatusBadRequest)
-// 		response := dto.ErrorResult{Code: http.StatusBadRequest, Message: err.Error()}
-// 		json.NewEncoder(w).Encode(response)
-// 	}
-
-// 	data, err := h.CartRepository.DeleteCart(cart)
-// 	if err != nil {
-// 		w.WriteHeader(http.StatusInternalServerError)
-// 		response := dto.ErrorResult{Code: http.StatusInternalServerError, Message: err.Error()}
-// 		json.NewEncoder(w).Encode(response)
-// 	}
-
-// 	w.WriteHeader(http.StatusOK)
-// 	response := dto.SuccessResult{Status: "Success", Data: data}
-// 	json.NewEncoder(w).Encode(response)
-// }
-
-// func (h *handlersCart) FindCartsByID(w http.ResponseWriter, r *http.Request) {
-// 	w.Header().Set("Content-Type", "application/json")
-
-// 	userInfo := r.Context().Value("userInfo").(jwt.MapClaims)
-// 	idTrans := int(userInfo["time"].(float64))
-
-// 	cart, err := h.CartRepository.FindCartsTransaction(idTrans)
-// 	if err != nil {
-// 		w.WriteHeader(http.StatusInternalServerError)
-// 		response := dto.ErrorResult{Code: http.StatusBadRequest, Message: err.Error()}
-// 		json.NewEncoder(w).Encode(response)
-// 	}
-
-// 	for i, p := range cart {
-// 		cart[i].Product.Image = path_file_cart + p.Product.Image
-// 	}
-
-// 	w.WriteHeader(http.StatusOK)
-// 	response := dto.SuccessResult{Status: "Success", Data: cart}
-// 	json.NewEncoder(w).Encode(response)
-// }
-
-// func convertResponseCart(u models.Cart) models.Cart {
-// 	return models.Cart{
-// 		ID:       u.ID,
-// 		SubTotal: u.SubTotal,
-// 		Product:  u.Product,
-// 		Topping:  u.Topping,
-// 		// Transaction: u.Transaction,
-// 	}
-// }
+}
 
 func (h *handlersCart) FindCartsByID(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
@@ -315,4 +237,42 @@ func convertResponseCart(u models.Cart) models.Cart {
 		Topping:  u.Topping,
 		// Transaction: u.Transaction,
 	}
+}
+
+func (h *handlersCart) UpdateCartTrans(w http.ResponseWriter, r *http.Request) {
+
+	w.Header().Set("Content-Type", "application/json")
+
+	request := new(cartdto.UpdateCartRequest)
+	if err := json.NewDecoder(r.Body).Decode(request); err != nil {
+		w.WriteHeader(http.StatusBadRequest)
+		response := dto.ErrorResult{Code: http.StatusBadRequest, Message: err.Error()}
+		json.NewEncoder(w).Encode(response)
+		return
+	}
+
+	id, _ := strconv.Atoi(mux.Vars(r)["id"])
+	cart, err := h.CartRepository.GetCart(id)
+	if err != nil {
+		w.WriteHeader(http.StatusBadRequest)
+		response := dto.ErrorResult{Code: http.StatusBadRequest, Message: err.Error()}
+		json.NewEncoder(w).Encode(response)
+		return
+	}
+
+	if request.TransactionID > 0 {
+		cart.TransactionID = &request.TransactionID
+	}
+
+	data, err := h.CartRepository.UpdateCart(cart)
+	if err != nil {
+		w.WriteHeader(http.StatusInternalServerError)
+		response := dto.ErrorResult{Code: http.StatusInternalServerError, Message: err.Error()}
+		json.NewEncoder(w).Encode(response)
+		return
+	}
+
+	w.WriteHeader(http.StatusOK)
+	response := dto.SuccessResult{Status: "Success", Data: data}
+	json.NewEncoder(w).Encode(response)
 }

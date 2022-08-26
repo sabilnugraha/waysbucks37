@@ -15,6 +15,8 @@ type CartRepository interface {
 	CreateTransactionID(transaction models.Transaction) (models.Transaction, error)
 	FindToppingsID(ToppingID []int) ([]models.Topping, error)
 	FindCartsTransaction(TrxID int) ([]models.Cart, error)
+	FindCartId(CartId int) ([]models.Cart, error)
+	UpdateCartTrans(models.Cart) (models.Cart, error)
 }
 
 // type repository struct {
@@ -34,7 +36,7 @@ func (r *repository) FindCarts() ([]models.Cart, error) {
 
 func (r *repository) GetCart(ID int) (models.Cart, error) {
 	var cart models.Cart
-	err := r.db.Preload("Product").Preload("Topping").Preload("Transaction").First(&cart, ID).Error
+	err := r.db.Preload("Product").Preload("Topping").First(&cart, ID).Error
 
 	return cart, err
 }
@@ -82,4 +84,17 @@ func (r *repository) FindCartsTransaction(TrxID int) ([]models.Cart, error) {
 	err := r.db.Preload("Product").Preload("Topping").Debug().Find(&carts, "transaction_id = ?", TrxID).Error
 
 	return carts, err
+}
+
+func (r *repository) FindCartId(UserID int) ([]models.Cart, error) {
+	var cart []models.Cart
+	err := r.db.Preload("Product").Preload("Topping").Find(&cart, "user_id = ?", UserID).Find(&cart, "status = ?", "onlist").Error
+
+	return cart, err
+}
+
+func (r *repository) UpdateCartTrans(cart models.Cart) (models.Cart, error) {
+	err := r.db.Save(&cart).Error
+
+	return cart, err
 }

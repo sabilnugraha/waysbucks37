@@ -105,10 +105,9 @@ func (h *handlerAuth) Login(w http.ResponseWriter, r *http.Request) {
 	}
 
 	//generate token
-	timeMilli := time.Now()
-	Transaction_ID := timeMilli.Unix()
+	// timeMilli := time.Now()
+	// Transaction_ID := timeMilli.Unix()
 	claims := jwt.MapClaims{}
-	claims["time"] = Transaction_ID
 	claims["id"] = user.ID
 	claims["exp"] = time.Now().Add(time.Hour * 2).Unix() // 2 hours expired
 
@@ -125,11 +124,11 @@ func (h *handlerAuth) Login(w http.ResponseWriter, r *http.Request) {
 		Token:    token,
 	}
 
-	createOrderData := models.Transaction{
-		ID:     Transaction_ID,
-		UserID: user.ID,
-	}
-	h.AuthRepository.CreateDataTransaction(createOrderData)
+	// createOrderData := models.Transaction{
+	// 	ID:     Transaction_ID,
+	// 	UserID: user.ID,
+	// }
+	// h.AuthRepository.CreateDataTransaction(createOrderData)
 
 	w.Header().Set("Content-Type", "application/json")
 	response := dto.SuccessResult{Status: "success", Data: loginResponse}

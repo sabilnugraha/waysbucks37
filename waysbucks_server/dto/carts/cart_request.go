@@ -14,3 +14,7 @@ type UpdateCart struct {
 	ProductID int `json:"product_id"`
 	ToppingID int `json:"topping_id"`
 }
+
+type UpdateCartRequest struct {
+	TransactionID int `json:"transaction_id"`
+}

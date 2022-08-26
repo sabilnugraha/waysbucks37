@@ -3,7 +3,7 @@ package models
 import "time"
 
 type Transaction struct {
-	ID        int64     `json:"id" gorm:"PRIMARY_KEY"`
+	ID        int       `json:"id" gorm:"PRIMARY_KEY"`
 	UserID    int       `json:"user_id"`
 	User      User      `json:"user"`
 	Carts     []Cart    `json:"carts"`
