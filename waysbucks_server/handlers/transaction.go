@@ -359,6 +359,26 @@ func SendMail(status string, transaction models.Transaction) {
 	}
 }
 
+func (h *handlerTransaction) FindTransactionId(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Content-Type", "application/json")
+
+	userInfo := r.Context().Value("userInfo").(jwt.MapClaims)
+	UserID := int(userInfo["id"].(float64))
+
+	transaction, err := h.TransactionRepository.FindTransactionId(UserID)
+	if err != nil {
+		w.WriteHeader(http.StatusInternalServerError)
+		response := dto.ErrorResult{Code: http.StatusBadRequest, Message: err.Error()}
+		json.NewEncoder(w).Encode(response)
+		return
+	}
+
+	w.WriteHeader(http.StatusOK)
+	response := dto.SuccessResult{Status: "Success", Data: transaction}
+	json.NewEncoder(w).Encode(response)
+
+}
+
 func convertTransactionResponse(u models.Transaction) transactiondto.TransactionResponse {
 	return transactiondto.TransactionResponse{
 		ID:     u.ID,

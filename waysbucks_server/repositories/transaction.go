@@ -16,6 +16,7 @@ type TransactionRepository interface {
 	UpdateTransactions(status string, ID string) error
 	GetOneTransaction(ID string) (models.Transaction, error) // Declare GetOneTransaction repository method ...
 	InputIdTransToCart(product models.Cart) (models.Cart, error)
+	FindTransactionId(UserID int) ([]models.Transaction, error)
 }
 
 func RepositoryTransaction(db *gorm.DB) *repository {
@@ -68,4 +69,11 @@ func (r *repository) InputIdTransToCart(cart models.Cart) (models.Cart, error) {
 	err := r.db.Save(&cart).Error
 
 	return cart, err
+}
+
+func (r *repository) FindTransactionId(UserID int) ([]models.Transaction, error) {
+	var transaction []models.Transaction
+	err := r.db.Preload("User").Preload("Carts").Preload("Carts.Product").Preload("Carts.Topping").Find(&transaction, "user_id = ?", UserID).Error
+
+	return transaction, err
 }

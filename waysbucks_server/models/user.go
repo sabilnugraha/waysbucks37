@@ -8,6 +8,10 @@ type User struct {
 	Email     string          `json:"email" gorm:"type: varchar(255)"`
 	Password  string          `json:"-" gorm:"type: varchar(255)"`
 	Status    string          `json:"status" gorm:"default:customer"`
+	Address   string          `json:"address" gorm:"type: varchar(255)"`
+	PostCode  int             `json:"post"`
+	Phone     int             `json:"phone" gorm:"type: varchar(255)"`
+	Image     string          `json:"image" gorm:"type: varchar(255)"`
 	Profile   ProfileResponse `json:"profile"`
 	CreatedAt time.Time       `json:"-"`
 	UpdatedAt time.Time       `json:"-"`
